@@ -1,23 +1,34 @@
-# Здась будет код прилождения, бакенд
+import pickle
 
 from flask import Flask, request, jsonify
-import numpy as np
-import json
 
 # Создаём Flask приложение
 app = Flask(__name__)
 
+# Путь к файлам модели и пайплайна
+MODEL_FILE = '../ml/model/model.pkl'
+PIPELINE_FILE = '../ml/model/pipeline.pkl'
+
+
+# === Загрузка модели и пайплайна ===
+def load_model_and_pipeline():
+    # Загрузка сохранённых модели и пайплайна
+    with open(MODEL_FILE, 'rb') as model_file:
+        model = pickle.load(model_file)
+
+    with open(PIPELINE_FILE, 'rb') as pipeline_file:
+        pipeline = pickle.load(pipeline_file)
+
+    return model, pipeline
+
+
 # === GET /status ===
-# Этот эндпоинт проверяет состояние приложения.
 @app.route('/status', methods=['GET'])
 def status():
-    # Возвращаем сообщение о том, что приложение работает
-    return jsonify({'status': 'ok', 'message': 'The application is running.'}), 200
+    return jsonify({'status': 'ok', 'message': 'Code & Conquer BI4ezzzz...'}), 200
 
 
 # === POST /predict ===
-# Этот эндпоинт будет принимать входные данные через POST-запрос,
-# например, данные для предсказания с моделью, и возвращать результат.
 @app.route('/predict', methods=['POST'])
 def predict():
     # Получаем данные из запроса
@@ -27,18 +38,21 @@ def predict():
     if not data or 'features' not in data:
         return jsonify({'error': 'No data provided or "features" field is missing'}), 400
 
-    # Пример обработки входных данных:
-    # Для простоты мы возьмём список признаков, переданных в "features",
-    # и просто посчитаем их сумму как "предсказание".
     features = data['features']
 
-    # Пример "предсказания" (вычисляем сумму входных данных)
-    prediction = np.sum(features)
+    # Загружаем модель и пайплайн
+    model, pipeline = load_model_and_pipeline()
 
-    # Возвращаем результат в формате JSON
-    return jsonify({'prediction': prediction}), 200
+    # Применяем пайплайн для предобработки данных (масштабирование, PCA, и т.д.)
+    processed_features = pipeline.transform([features])
+
+    # Получаем предсказание от модели
+    prediction = model.predict(processed_features)
+
+    # Возвращаем результат предсказания
+    return jsonify({'prediction': prediction.tolist()}), 200
 
 
-# Запуск приложения на порту 5000
+# Запуск приложения
 if __name__ == '__main__':
     app.run(debug=True, port=8081)

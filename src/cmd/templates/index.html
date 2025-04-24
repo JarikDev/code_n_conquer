@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <title>Семантический анализ текста</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
@@ -27,7 +31,7 @@
 
         h1 {
             color: #333333;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
         }
 
         textarea {
@@ -37,8 +41,15 @@
             font-size: 1rem;
             border: 1px solid #cccccc;
             border-radius: 0.5rem;
-            resize: vertical;
-            margin-bottom: 1rem;
+            resize: none;
+            overflow: auto;
+            background-color: #fdfdfd;
+            transition: border 0.2s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #4a90e2;
         }
 
         button {
@@ -67,7 +78,7 @@
     <div class="container">
         <h1>Семантический анализ текста</h1>
         <form method="POST" action="/predict">
-            <textarea name="text" placeholder="Введите текст для анализа..."></textarea><br>
+            <textarea name="text" placeholder="Введите текст для анализа..."></textarea><br><br>
             <button type="submit">Анализировать</button>
         </form>
         {% if result %}

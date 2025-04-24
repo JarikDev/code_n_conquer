@@ -21,6 +21,7 @@ def predict():
 
     X = vectorizer.transform([text])
     prediction = model.predict(X)[0]
+    print(f'Prediction: {prediction}')
     return render_template("index.html", result=f"Предсказание: {prediction}")
 
 @app.route("/metrics", methods=["GET"])

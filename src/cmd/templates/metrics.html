@@ -19,6 +19,23 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
+        .nav {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .nav a {
+            text-decoration: none;
+            color: #4a90e2;
+            font-weight: 500;
+            margin: 0 1rem;
+            font-size: 1.05rem;
+        }
+
+        .nav a:hover {
+            text-decoration: underline;
+        }
+
         h1 {
             text-align: center;
             color: #333;
@@ -51,22 +68,21 @@
         tr:nth-child(even) {
             background-color: #f9f9f9;
         }
-
-        .back-link {
-            display: block;
-            text-align: center;
-            margin-top: 2rem;
-            text-decoration: none;
-            color: #4a90e2;
-        }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="nav">
+            <a href="/">🏠 Главная</a>
+            <a href="/metrics">📊 Метрики модели</a>
+        </div>
+
         <h1>Метрики модели</h1>
+
         <div class="accuracy">
             <strong>Точность (accuracy):</strong> {{ accuracy }}
         </div>
+
         <table>
             <thead>
                 <tr>
@@ -91,7 +107,6 @@
                 {% endfor %}
             </tbody>
         </table>
-        <a class="back-link" href="/">← Назад</a>
     </div>
 </body>
 </html>

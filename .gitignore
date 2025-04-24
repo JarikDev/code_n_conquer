@@ -135,7 +135,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
+code_n_conquer_venv/
 # Spyder project settings
 .spyderproject
 .spyproject

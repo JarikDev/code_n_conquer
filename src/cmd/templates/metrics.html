@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Метрики модели</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f4f8;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .accuracy {
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            color: #2a9d8f;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 0.75rem;
+            text-align: center;
+        }
+
+        th {
+            background-color: #264653;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 2rem;
+            text-decoration: none;
+            color: #4a90e2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Метрики модели</h1>
+        <div class="accuracy">
+            <strong>Точность (accuracy):</strong> {{ accuracy }}
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Класс</th>
+                    <th>Precision</th>
+                    <th>Recall</th>
+                    <th>F1-Score</th>
+                    <th>Support</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for label, scores in report.items() %}
+                    {% if label.isdigit() %}
+                    <tr>
+                        <td>{{ label }}</td>
+                        <td>{{ "%.2f" | format(scores["precision"]) }}</td>
+                        <td>{{ "%.2f" | format(scores["recall"]) }}</td>
+                        <td>{{ "%.2f" | format(scores["f1-score"]) }}</td>
+                        <td>{{ scores["support"] }}</td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+        <a class="back-link" href="/">← Назад</a>
+    </div>
+</body>
+</html>

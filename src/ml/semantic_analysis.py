@@ -22,39 +22,36 @@ from sklearn.pipeline import Pipeline
 # файлы оказались не толстыми, запихнул в проект
 
 data_files = ['./data/1.csv','./data/2.csv','./data/3.csv','./data/4.csv','./data/5.csv','./data/6.csv']
+from sklearn.datasets import fetch_20newsgroups
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report
+import joblib
+import os
 
-def get_basic_info_from_file(path):
-    data: DataFrame = pd.read_csv(path)
-    print('Посмотрим на данные')
-    print(data.head())
-    print(data.info())
-    print('Количество пропусков в колонках')
-    print(data.isna().sum())
+# Загрузка данных
+categories = ['sci.space', 'rec.sport.hockey']
+data = fetch_20newsgroups(subset='train', categories=categories, remove=('headers', 'footers', 'quotes'))
+test_data = fetch_20newsgroups(subset='test', categories=categories, remove=('headers', 'footers', 'quotes'))
 
-for file in data_files:
-    get_basic_info_from_file(file)
+# Векторизация
+vectorizer = TfidfVectorizer()
+X_train = vectorizer.fit_transform(data.data)
+X_test = vectorizer.transform(test_data.data)
 
-# Предположим, что у вас есть готовый пайплайн и модель
-scaler = StandardScaler()
-pca = PCA(n_components=2)
-clf = RandomForestClassifier(n_estimators=100, random_state=42)
+# Модель
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train, data.target)
 
-# Создаём пайплайн
-pipeline = Pipeline([
-    ('scaler', scaler),
-    ('pca', pca),
-    ('classifier', clf)
-])
+# Метрики
+y_pred = model.predict(X_test)
+metrics = {
+    "accuracy": accuracy_score(test_data.target, y_pred),
+    "report": classification_report(test_data.target, y_pred, output_dict=True)
+}
 
-# Обучение модели на произвольных данных
-# Здесь вам нужно использовать ваши реальные данные для обучения
-X_train = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-y_train = [0, 1, 0]
-pipeline.fit(X_train, y_train)
-
-# Сохраняем модель и пайплайн в pickle файл
-with open('./model/model.pkl', 'wb') as model_file:
-    pickle.dump(clf, model_file)  # Сохраняем модель
-
-with open('./model/pipeline.pkl', 'wb') as pipeline_file:
-    pickle.dump(pipeline, pipeline_file)  # Сохраняем пайплайн
+# Сохранение модели и метрик
+os.makedirs("model", exist_ok=True)
+joblib.dump(model, "model/model.pkl")
+joblib.dump(metrics, "model/metrics.pkl")
+joblib.dump(vectorizer, "model/vectorizer.pkl")

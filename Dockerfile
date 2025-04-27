@@ -1,23 +1,13 @@
-FROM python:3.9-slim
-
-# Рабочая директория
-WORKDIR /app
-
-# Копируем зависимости и исходники
-COPY requirements.txt ./
-COPY src ./src
-COPY src/ml ./src/ml
+# Используем официальный образ Python
+FROM python:3.8-slim
 
 # Устанавливаем зависимости
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR /app
+COPY requirements.txt requirements.txt
+RUN pip install -r requirements.txt
 
-# Переменные окружения для запуска Flask
-ENV FLASK_APP=cmd/app.py
-ENV FLASK_RUN_HOST=0.0.0.0
-ENV FLASK_ENV=production
+# Копируем код в контейнер
+COPY . /app
 
-# Открываем порт
-EXPOSE 8081
-
-# Запуск приложения
-CMD ["flask", "run"]
+# Запускаем Flask приложение
+CMD ["python", "app.py"]

@@ -2,12 +2,13 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Метрики модели</title>
+    <title>Метрики поиска</title>
     <style>
         body {
             font-family: 'Segoe UI', sans-serif;
             background: #f0f4f8;
             padding: 2rem;
+            margin: 0;
         }
 
         .container {
@@ -41,32 +42,14 @@
             color: #333;
         }
 
-        .accuracy {
-            font-size: 1.2rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
-            color: #2a9d8f;
+        .metrics {
+            margin-top: 2rem;
+            font-size: 1.1rem;
+            color: #333;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 0.75rem;
-            text-align: center;
-        }
-
-        th {
-            background-color: #264653;
-            color: white;
-        }
-
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
+        .metric-item {
+            margin-bottom: 1rem;
         }
     </style>
 </head>
@@ -74,39 +57,22 @@
     <div class="container">
         <div class="nav">
             <a href="/">🏠 Главная</a>
-            <a href="/metrics">📊 Метрики модели</a>
+            <a href="/metrics">📊 Метрики поиска</a>
         </div>
 
-        <h1>Метрики модели</h1>
+        <h1>Метрики качества поиска</h1>
 
-        <div class="accuracy">
-            <strong>Точность (accuracy):</strong> {{ accuracy }}
-        </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Класс</th>
-                    <th>Precision</th>
-                    <th>Recall</th>
-                    <th>F1-Score</th>
-                    <th>Support</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for label, scores in report.items() %}
-                    {% if label.isdigit() %}
-                    <tr>
-                        <td>{{ label }}</td>
-                        <td>{{ "%.2f" | format(scores["precision"]) }}</td>
-                        <td>{{ "%.2f" | format(scores["recall"]) }}</td>
-                        <td>{{ "%.2f" | format(scores["f1-score"]) }}</td>
-                        <td>{{ scores["support"] }}</td>
-                    </tr>
-                    {% endif %}
-                {% endfor %}
-            </tbody>
-        </table>
+        {% if search_metrics %}
+            <div class="metrics">
+                <div class="metric-item"><strong>Precision@5:</strong> {{ search_metrics["precision@5"] }}</div>
+                <div class="metric-item"><strong>Recall@5:</strong> {{ search_metrics["recall@5"] }}</div>
+                <div class="metric-item"><strong>MRR:</strong> {{ search_metrics["mrr"] }}</div>
+                <div class="metric-item"><strong>Тестовых запросов:</strong> {{ search_metrics["test_size"] }}</div>
+                <div class="metric-item"><strong>F1-Score:</strong> {{ search_metrics["f1_score"] }}</div>
+            </div>
+        {% else %}
+            <p>Метрики пока не рассчитаны.</p>
+        {% endif %}
     </div>
 </body>
 </html>

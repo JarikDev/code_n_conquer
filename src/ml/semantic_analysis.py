@@ -2,13 +2,12 @@ import os
 import re
 import json
 
-import joblib
 import numpy as np
 import pandas as pd
 import torch
 from transformers import BertTokenizer, BertModel
 from sklearn.metrics.pairwise import cosine_similarity
-import pymorphy2
+import stanza
 
 # Создание папки для модели
 os.makedirs("model", exist_ok=True)
@@ -21,8 +20,8 @@ for i in range(1, 7):
 
 data = pd.concat(dfs, ignore_index=True)
 
-# 2. Очистка текста и лемматизация
-morph = pymorphy2.MorphAnalyzer()
+# 2. Очистка текста и лемматизация с использованием stanza
+nlp = stanza.Pipeline('ru', processors='tokenize,lemma')  # Заменили 'mlemma' на 'lemma'
 
 def clean_text(text):
     if not isinstance(text, str):
@@ -31,11 +30,9 @@ def clean_text(text):
     text = re.sub(r"[^а-яa-z0-9\s]", " ", text)  # Убираем все кроме букв и пробелов
     text = re.sub(r"\s+", " ", text)  # Убираем лишние пробелы
 
-    # Лемматизация
-    words = text.split()
-    lemmatized_words = [morph.parse(word)[0].normal_form for word in words]
-
-    return " ".join(lemmatized_words)
+    # Лемматизация с использованием stanza
+    doc = nlp(text)
+    return " ".join([word.lemma for sent in doc.sentences for word in sent.words])
 
 # Применение очистки текста
 for col in ['doc_text', 'image2text', 'speech2text']:
@@ -119,8 +116,12 @@ def compute_search_metrics(queries, embeddings, texts, model, k=5):
 search_metrics = compute_search_metrics(test_queries, doc_embeddings, doc_texts, model)
 
 # 9. Сохранение всех моделей и метрик
+# Сохранение модели и токенизатора в правильном формате
+tokenizer.save_pretrained('./model')
+model.save_pretrained('./model')
+
+# Сохранение эмбеддингов и метрик
 np.save("model/doc_embeddings.npy", doc_embeddings)
-joblib.dump(model, "model/model.pkl")
 data[['full_text']].to_csv("model/doc_texts.csv", index=False)
 
 with open("model/search_metrics.json", "w", encoding="utf-8") as f:

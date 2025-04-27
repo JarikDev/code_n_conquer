@@ -1,4 +1,5 @@
 from flask import Flask, request, render_template
+import torch
 import joblib
 import numpy as np
 import pandas as pd
@@ -6,14 +7,15 @@ import json
 import os
 import re
 from sklearn.metrics.pairwise import cosine_similarity
+from transformers import BertTokenizer, BertModel
 
 # Инициализация Flask
 app = Flask(__name__)
 base_path = "../ml/model/"
+
 # Загрузка моделей и данных
-model = joblib.load(f"{base_path}model.pkl")
-doc_embeddings = np.load(f"{base_path}doc_embeddings.npy")
-doc_texts = pd.read_csv(f"{base_path}doc_texts.csv")['full_text'].tolist()
+tokenizer = BertTokenizer.from_pretrained("../ml/model/")  # Путь к директории с моделью
+model = BertModel.from_pretrained("../ml/model/")  # Путь к директории с моделью
 
 # Загрузка метрик
 if os.path.exists(f"{base_path}search_metrics.json"):
@@ -44,20 +46,27 @@ def predict():
         return render_template("index.html", result="Введите текст и фразу.", text=text, phrase=phrase)
 
     text_clean = clean_text(text)
-    text_emb = model.encode([text_clean])
-
     phrase_clean = clean_text(phrase)
-    phrase_emb = model.encode([phrase_clean])
 
-    sim = cosine_similarity(phrase_emb, text_emb)[0][0]
+    # Токенизация текста и фразы
+    inputs_text = tokenizer(text_clean, return_tensors="pt", truncation=True, padding=True, max_length=512)
+    inputs_phrase = tokenizer(phrase_clean, return_tensors="pt", truncation=True, padding=True, max_length=512)
 
-    if sim >= 0.4:
+    with torch.no_grad():
+        # Получаем эмбеддинги для текста и фразы
+        text_emb = model(**inputs_text).last_hidden_state.mean(dim=1).squeeze()
+        phrase_emb = model(**inputs_phrase).last_hidden_state.mean(dim=1).squeeze()
+
+    # Вычисление сходства косинуса между фразой и текстом
+    sim = cosine_similarity([text_emb.numpy()], [phrase_emb.numpy()])[0][0]
+
+    if sim >= 0.6:
         start_pos = text_clean.find(phrase_clean)
         if start_pos != -1:
             end_pos = start_pos + len(phrase_clean)
-            position = f"Точное совпадение: {start_pos}-{end_pos}"
+            position = f"{start_pos}-{end_pos}"
         else:
-            position = "Примерное совпадение, точная позиция не найдена."
+            position = "примерное совпадение (нет точной позиции)"
         result = f"Позиция: {position} | Вероятность: {round(float(sim), 3)}"
     else:
         result = f"Фраза не найдена. Вероятность: {round(float(sim), 3)}"

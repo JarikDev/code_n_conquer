@@ -1,25 +1,28 @@
 # Загружаем библиотеки
 import pandas as pd
 import numpy as np
-from sentence_transformers import SentenceTransformer, util
+import pymorphy3
 import re
 import joblib
 import os
+os.environ["USE_TF"] = "0"
+
+
+# Для построения модели
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from sentence_transformers import SentenceTransformer, util
 
 
 
 # Ссылка на raw-версию CSV
-# Список файлов CSV для слияния
-csv_files = [f"data/{i}.csv" for i in range(1, 7)]
+url = 'https://raw.githubusercontent.com/JarikDev/code_n_conquer/master/src/ml/data/1.csv'
 
-# Чтение и слияние CSV файлов в один DataFrame
-dfs = [pd.read_csv(file) for file in csv_files]
-
-# Слияние всех DataFrame в один
-merged_df = pd.concat(dfs, ignore_index=True)
+# Загружаем данные
+text_data = pd.read_csv(url)
 
 # Копия датасета
-text_df = merged_df.copy()
+text_df = text_data.copy()
 
 
 
@@ -36,7 +39,7 @@ print('0.0s')
 
 
 # Загружаем модель sentence-transformers
-model = SentenceTransformer('intfloat/multilingual-e5-large')
+ST_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 print('Модель загружена')
 
 
@@ -55,13 +58,16 @@ def clean_text(text):
 
 # Функция для поиска наиболее близкого слова в документе
 def semantic_search_in_document(document, query, model):
-
+    
+    
     """
     Ищет слово в документе, наиболее близкое по смыслу к заданному запросу.
+
     Args:
         document (str): Строка (документ), в которой выполняется поиск.
         query (str): Запрос (словосочетание) для поиска.
         model: Модель sentence-transformers для создания эмбеддингов.
+
     Returns:
         dict: Словарь с результатами поиска:
             - "document": Исходный документ.
@@ -69,123 +75,98 @@ def semantic_search_in_document(document, query, model):
             - "positions": Позиции найденного слова в формате (start-end) в символах.
             - "matched_word": Найденное слово.
     """
-
-    # Очищаем документ и запрос
+    
+    
     doc_cleaned = clean_text(document)
     query_cleaned = clean_text(query)
-
-    # Проверяем, что запрос содержит не более 2 слов
-    if len(query_cleaned.split()) > 2:
-        return {"error": "Запрос должен содержать не более 2 слов."}
-
-
-    # Разделяем документ на слова
+    
     doc_words = doc_cleaned.split()
-
-    if not doc_words:
+    query_words = query_cleaned.split()
+    
+    
+    # Проверка на длину запроса
+    if len(query_words) > 2:
         return {
-            'document': document, 
-            'score': 0.0, 
-            'positions': 'Слова Не Найдены В ТЕКСТЕ', 
-            'matched_word': ''
-            }
-
-    # Создаём эмбеддинги для запроса и каждого слова в документе
-    query_embedding = model.encode(query_cleaned, convert_to_tensor = True)
-    word_embeddings = model.encode(doc_words, convert_to_tensor = True)
-
-    # Вычисляем косинусное сходство между запросом и каждым словом
-    cosine_scores = util.cos_sim(query_embedding, word_embeddings)[0]
-
-
-    # Проверяем, есть ли точное совпадение (например, "дочь" в "доченька")
-    best_match_idx = None
-    best_score = -1
-
-    for i, word in enumerate(doc_words):
-        score = cosine_scores[i].item()
-
-        # Даём приоритет словам, содержащим запрос как подстроку
-        if query_cleaned in word:
-            score += 1.0  # Добавляем бонус, чтобы выбрать это слово
-
-        if score > best_score:
-            best_score = score
-            best_match_idx = i
-
-    if best_match_idx is None or best_score < 0.05:
+            "document": document,
+            "distance": 1.0,
+            "positions": "0-0",
+            "matched_word": ""
+        }
+    
+    
+    # Получаем эмбеддинги для всего документа и запроса
+    doc_embedding = model.encode(doc_cleaned, convert_to_tensor=True)
+    query_embedding = model.encode(query_cleaned, convert_to_tensor=True)
+    
+    # Вычисляем косинусное сходство между запросом и документом
+    cosine_similarity = util.cos_sim(query_embedding, doc_embedding)[0]
+    
+    # Косинусное расстояние = 1 - косинусное сходство
+    cosine_distance = 1.0 - cosine_similarity
+    
+    
+    # Если косинусное расстояние слишком большое (> 0.5), запрос не связан с документом
+    if cosine_distance > 0.5:
         return {
-            'document': document, 
-            'score': 0.0,
-            'positions': 'Слова Не Найдены В ТЕКСТЕ', 
-            'matched_word': ''
-            }
-
-    best_word = doc_words[best_match_idx]
-
-    # Устанавливаем вероятность 1.0, если сходство выше порога
-    display_score = 1.0 if best_score >= 0.5 else best_score
-
-    # Вычисляем позиции в символах в исходной строке
-    original_words = re.findall(r'\S+', document)
-    matched_word = original_words[best_match_idx]
-
-    current_pos = 0
-
-    for i, word in enumerate(original_words):
-        start_pos = document.find(word, current_pos)
-        end_pos = start_pos + len(word)
-
-        if i == best_match_idx:
-            positions_str = f'{start_pos}-{end_pos}'
-            break
-
-        current_pos = end_pos
-
+            "document": document,
+            "distance": float(cosine_distance),
+            "positions": "0-0",
+            "matched_word": ""
+        }
+    
+    
+    # Находим ближайшее слово для определения позиции
+    doc_words_embeddings = model.encode(doc_words, convert_to_tensor=True)
+    word_cosine_scores = util.cos_sim(query_embedding, doc_words_embeddings)[0]
+    best_word_idx = np.argmax(word_cosine_scores)
+    best_word = doc_words[best_word_idx]
+    
+    # Определяем позиции найденного слова
+    start_pos = document.lower().find(best_word)
+    end_pos = start_pos + len(best_word) if start_pos != -1 else 0
+    positions_str = f"{start_pos}-{end_pos}" if start_pos != -1 else "0-0"
+    
+    
     return {
-        'document': document,
-        'score': display_score,
-        'positions': positions_str,
-        'matched_word': matched_word
+        "document": document,
+        "distance": float(cosine_distance),
+        "positions": positions_str,
+        "matched_word": best_word
     }
-
 
 
 
 
 # Заданные списки строк (документы) и словосочетаний
 documents = [
-    "доченька твоя совсем большая стала",
-    "в лесу растёт высокое дерево",
-    "санк петербург красивый город",
-    "машина едет по дороге быстро",
-    "новый автобиль стоит в гараже",
-    "учитель объясняет урок детям",
-    "обучение проходит в школе ежегодно",
-    "позвони мне завтра утром",
-    "в болнице работает мой друг",
-    "телефон лежит на столе рядом",
-    "россия большая и красивая страна",
-    "портфель лежит в шкафу дома",
-    "институт находится в центре города"
+    'доченька твоя совсем большая стала',
+    'в лесу растёт высокое дерево',
+    'портфель лежит в шкафу дома',
+    'институт находится в центре города',
+    'вся дорога забита деревьями и цветами',
+    'в следующее воскресенье я собираюсь в питер',
+    'у меня сломалась стиралка прикинь',
+    'садись в машину и поехали уже',
+    'сколько стоит ремонт стиральной машины',
+    'ты возьми корзину прежде чем набрать продукты',
+    'его сегодня утром отвезли в ближайший госпиталь'
 ]
 
 
 queries = [
-    "дочь",
-    "дерево",
-    "петербург",
-    "машина",
-    "автобиль",
-    "учитель",
-    "обучение",
-    "звонить",
-    "болница",
-    "телефон",
-    "россия",
-    "портфель",
-    "институт"
+    'дочь',
+    'дерево',
+    'портфель',
+    'институт',
+    'дерево',
+    'санкт петербург',
+    'стиральная машина',
+    'автомобиль',
+    'автомобиль',
+    'звонить',
+    'больница'
 ]
+
 
 
 
@@ -194,39 +175,54 @@ assert len(documents) == len(queries), "Длина списков documents и q
 
 
 
-# Выполняем поиск для каждой пары (document, query)
+
+# Выполняем поиск
 results = []
-
 for doc, query in zip(documents, queries):
-
-    # Применяем функцию с моделью
-    result = semantic_search_in_document(doc, query, model)
-
-    # Укорачиваем документ до 50 символов для компактного отображения
-    short_doc = result["document"][:50] + "..." if len(result["document"]) > 50 else result["document"]
-    results.append({
-        "документ": short_doc,
-        "словосочетание": query,
-        "позиция": result["positions"],
-        "вероятность": result["score"]
-    })
-
+    result = semantic_search_in_document(doc, query, ST_model)
+    
+    # Добавляем результат только если косинусное расстояние <= 0.5
+    if result["distance"] <= 0.5:
+        short_doc = result["document"][:50] + "..." if len(result["document"]) > 50 else result["document"]
+        results.append({
+            "документ": short_doc,
+            "словосочетание": query,
+            "позиция": result["positions"],
+            "косинусное_расстояние": result["distance"]
+        })
 
 
-# Выводим результаты в формате таблицы
+# Выводим результаты
 print("\nДОКУМЕНТ".ljust(50), "СЛОВОСОЧЕТАНИЕ".ljust(20), "ВЫВОД")
 for res in results:
-
     print(
         res["документ"].ljust(50),
         res["словосочетание"].ljust(20),
         f"позиция: {res['позиция']}".ljust(25),
-        f"вероятность: {res['вероятность']:.1f}"
+        f"косинусное расстояние: {res['косинусное_расстояние']:.3f}"
     )
 
-
-
+out_dir = 'model'
 
 # Сохраняем результаты
-os.makedirs('model', exist_ok=True)
-joblib.dump(results, 'model/search_results.pkl')
+os.makedirs(out_dir, exist_ok=True)
+joblib.dump(results, f'{out_dir}/search_results.pkl')
+
+
+# Сохраняем модель в папку ST_model/
+os.makedirs(out_dir, exist_ok=True)  # Создаём папку, если её нет
+ST_model.save(f'{out_dir}/semantic_search_model')
+print(f"Модель сохранена в {out_dir}/semantic_search_model")
+
+
+
+# Проверяем, существует ли сохранённая модель
+if os.path.exists(f'{out_dir}/semantic_search_model'):
+    ST_model = SentenceTransformer(f'{out_dir}/semantic_search_model')
+    print("Модель загружена из локального файла")
+else:
+    ST_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+    print("Модель загружена из интернета")
+    os.makedirs(out_dir, exist_ok=True)
+    ST_model.save(f'{out_dir}/semantic_search_model')
+    print(f"Модель сохранена в {out_dir}/semantic_search_model")

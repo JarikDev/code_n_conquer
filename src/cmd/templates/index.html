@@ -99,14 +99,15 @@
         <h1>Семантический анализ текста</h1>
 
         <form action="/predict" method="post">
-            <textarea name="text" placeholder="Введите текст для анализа..." required>{{ text or '' }}</textarea>
-            <input type="text" name="phrase" placeholder="Введите фразу для поиска..." value="{{ phrase or '' }}" required>
+            <textarea name="text" placeholder="Введите текст для анализа..." required>{{ text | default('') }}</textarea>
+            <input type="text" name="phrase" placeholder="Введите фразу для поиска..." value="{{ phrase | default('') }}" required>
             <button type="submit">Анализировать</button>
         </form>
 
         {% if result %}
             <div class="result">
-                <strong>Результат анализа:</strong> {{ result }}
+                <strong>Результат анализа:</strong><br>
+                {{ result | safe }}
             </div>
         {% endif %}
     </div>

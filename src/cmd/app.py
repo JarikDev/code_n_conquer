@@ -62,7 +62,17 @@ def predict():
 # === Страница с метриками ===
 @app.route("/metrics")
 def metrics():
-    return render_template("metrics.html", search_metrics=search_results)
+    metrics_path = os.path.join(base_path, "search_metrics.pkl")
+    if os.path.exists(metrics_path):
+        search_metrics = joblib.load(metrics_path)
+    else:
+        search_metrics = {"error": "Метрики не найдены. Запустите модельное ядро."}
+
+    return render_template(
+        "metrics.html",
+        search_metrics=search_metrics,
+        search_results=search_results
+    )
 
 
 if __name__ == "__main__":

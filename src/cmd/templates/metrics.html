@@ -12,7 +12,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 1100px;
             margin: auto;
             background: white;
             padding: 2rem;
@@ -42,14 +42,43 @@
             color: #333;
         }
 
-        .metrics {
+        .metrics, .results {
             margin-top: 2rem;
-            font-size: 1.1rem;
-            color: #333;
         }
 
         .metric-item {
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        td {
+            font-size: 0.95rem;
+        }
+
+        .check {
+            font-weight: bold;
+            color: green;
+        }
+
+        .cross {
+            font-weight: bold;
+            color: red;
         }
     </style>
 </head>
@@ -60,18 +89,57 @@
             <a href="/metrics">📊 Метрики поиска</a>
         </div>
 
-        <h1>Метрики качества поиска</h1>
+        <h1>📊 Метрики качества семантического поиска</h1>
 
         {% if search_metrics %}
             <div class="metrics">
-                <div class="metric-item"><strong>Precision@5:</strong> {{ search_metrics["precision@5"] }}</div>
-                <div class="metric-item"><strong>Recall@5:</strong> {{ search_metrics["recall@5"] }}</div>
-                <div class="metric-item"><strong>MRR:</strong> {{ search_metrics["mrr"] }}</div>
-                <div class="metric-item"><strong>Тестовых запросов:</strong> {{ search_metrics["test_size"] }}</div>
-                <div class="metric-item"><strong>F1-Score:</strong> {{ search_metrics["f1_score"] }}</div>
+                <h2>Сводные метрики:</h2>
+                {% for key, value in search_metrics.items() %}
+                    <div class="metric-item">
+                        <strong>{{ key.replace('_', ' ').capitalize() }}:</strong> {{ value }}
+                    </div>
+                {% endfor %}
             </div>
         {% else %}
             <p>Метрики пока не рассчитаны.</p>
+        {% endif %}
+
+        {% if search_results %}
+            <div class="results">
+                <h2>Подробные результаты поиска:</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Документ</th>
+                            <th>Запрос</th>
+                            <th>Ожидалось</th>
+                            <th>Найдено</th>
+                            <th>Позиция</th>
+                            <th>Расстояние</th>
+                            <th>Совпадение</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in search_results %}
+                            <tr>
+                                <td>{{ row['документ'] }}</td>
+                                <td>{{ row['запрос'] }}</td>
+                                <td>{{ row['ожидалось'] }}</td>
+                                <td>{{ row['найдено'] }}</td>
+                                <td>{{ row['позиция'] }}</td>
+                                <td>{{ row['косинусное_расстояние'] }}</td>
+                                <td>
+                                    {% if row['совпадение'] %}
+                                        <span class="check">✅</span>
+                                    {% else %}
+                                        <span class="cross">❌</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         {% endif %}
     </div>
 </body>
